@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Fotos de avaria, gravadas pela câmera do sistema via TakePicture. -->
+    <files-path
+        name="fotos"
+        path="fotos/" />
+    <!-- Pacotes .zip prontos para compartilhar; vivem no cache e podem ser limpos. -->
+    <cache-path
+        name="pacotes"
+        path="pacotes/" />
+</paths>

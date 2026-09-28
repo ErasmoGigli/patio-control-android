@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        O tema XML existe só para a janela antes do Compose assumir: cor de
+        splash e barra de status. As cores da interface vivem em ui/theme.
+    -->
+    <style name="Theme.PatioControl" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#12314F</item>
+        <item name="android:navigationBarColor">#12314F</item>
+        <item name="android:windowBackground">#F4F6F9</item>
+    </style>
+</resources>
