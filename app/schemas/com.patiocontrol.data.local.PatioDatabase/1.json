@@ -1,0 +1,425 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "37125eaab661ebb0c556415130e4ab0b",
+    "entities": [
+      {
+        "tableName": "carreta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `data` TEXT NOT NULL, `turno` TEXT NOT NULL, `transportadora` TEXT NOT NULL, `placa` TEXT NOT NULL, `placaCavalo` TEXT NOT NULL, `motorista` TEXT NOT NULL, `veiculo` TEXT NOT NULL, `origem` TEXT NOT NULL, `destino` TEXT NOT NULL, `documento` TEXT NOT NULL, `responsavel` TEXT NOT NULL, `produto` TEXT NOT NULL, `notaFiscal` TEXT NOT NULL, `quantidade` REAL, `unidade` TEXT NOT NULL, `observacaoCarga` TEXT NOT NULL, `h_programado` TEXT, `h_chegada` TEXT, `h_entrada` TEXT, `h_inicio_descarga` TEXT, `h_fim_descarga` TEXT, `h_inicio_ag` TEXT, `h_fim_ag` TEXT, `h_liberacao` TEXT, `h_saida` TEXT, `respostaAg` TEXT NOT NULL, `justificativaSemAg` TEXT NOT NULL, `observacaoCarregamento` TEXT NOT NULL, `encerradaEm` INTEGER, `exportadaEm` INTEGER, `transferidaEm` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "turno",
+            "columnName": "turno",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transportadora",
+            "columnName": "transportadora",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placa",
+            "columnName": "placa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placaCavalo",
+            "columnName": "placaCavalo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motorista",
+            "columnName": "motorista",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "veiculo",
+            "columnName": "veiculo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origem",
+            "columnName": "origem",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destino",
+            "columnName": "destino",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "documento",
+            "columnName": "documento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "responsavel",
+            "columnName": "responsavel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "produto",
+            "columnName": "produto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notaFiscal",
+            "columnName": "notaFiscal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantidade",
+            "columnName": "quantidade",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unidade",
+            "columnName": "unidade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacaoCarga",
+            "columnName": "observacaoCarga",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hProgramado",
+            "columnName": "h_programado",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hChegada",
+            "columnName": "h_chegada",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hEntrada",
+            "columnName": "h_entrada",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hInicioDescarga",
+            "columnName": "h_inicio_descarga",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hFimDescarga",
+            "columnName": "h_fim_descarga",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hInicioAg",
+            "columnName": "h_inicio_ag",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hFimAg",
+            "columnName": "h_fim_ag",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hLiberacao",
+            "columnName": "h_liberacao",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "hSaida",
+            "columnName": "h_saida",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "respostaAg",
+            "columnName": "respostaAg",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "justificativaSemAg",
+            "columnName": "justificativaSemAg",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacaoCarregamento",
+            "columnName": "observacaoCarregamento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encerradaEm",
+            "columnName": "encerradaEm",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "exportadaEm",
+            "columnName": "exportadaEm",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "transferidaEm",
+            "columnName": "transferidaEm",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_carreta_data",
+            "unique": false,
+            "columnNames": [
+              "data"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_carreta_data` ON `${TABLE_NAME}` (`data`)"
+          },
+          {
+            "name": "index_carreta_placa",
+            "unique": false,
+            "columnNames": [
+              "placa"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_carreta_placa` ON `${TABLE_NAME}` (`placa`)"
+          },
+          {
+            "name": "index_carreta_encerradaEm",
+            "unique": false,
+            "columnNames": [
+              "encerradaEm"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_carreta_encerradaEm` ON `${TABLE_NAME}` (`encerradaEm`)"
+          },
+          {
+            "name": "index_carreta_exportadaEm",
+            "unique": false,
+            "columnNames": [
+              "exportadaEm"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_carreta_exportadaEm` ON `${TABLE_NAME}` (`exportadaEm`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "ativo_giro",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `carretaId` TEXT NOT NULL, `tipo` TEXT NOT NULL, `quantidade` REAL, `unidade` TEXT NOT NULL, `documento` TEXT NOT NULL, `destino` TEXT NOT NULL, `observacao` TEXT NOT NULL, FOREIGN KEY(`carretaId`) REFERENCES `carreta`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "carretaId",
+            "columnName": "carretaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipo",
+            "columnName": "tipo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantidade",
+            "columnName": "quantidade",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unidade",
+            "columnName": "unidade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "documento",
+            "columnName": "documento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destino",
+            "columnName": "destino",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacao",
+            "columnName": "observacao",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ativo_giro_carretaId",
+            "unique": false,
+            "columnNames": [
+              "carretaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ativo_giro_carretaId` ON `${TABLE_NAME}` (`carretaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "carreta",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "carretaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "avaria",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `carretaId` TEXT NOT NULL, `item` TEXT NOT NULL, `quantidade` REAL, `unidade` TEXT NOT NULL, `origem` TEXT NOT NULL, `observacao` TEXT NOT NULL, `foto` TEXT NOT NULL, FOREIGN KEY(`carretaId`) REFERENCES `carreta`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "carretaId",
+            "columnName": "carretaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "item",
+            "columnName": "item",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantidade",
+            "columnName": "quantidade",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "unidade",
+            "columnName": "unidade",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "origem",
+            "columnName": "origem",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacao",
+            "columnName": "observacao",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "foto",
+            "columnName": "foto",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_avaria_carretaId",
+            "unique": false,
+            "columnNames": [
+              "carretaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_avaria_carretaId` ON `${TABLE_NAME}` (`carretaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "carreta",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "carretaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '37125eaab661ebb0c556415130e4ab0b')"
+    ]
+  }
+}

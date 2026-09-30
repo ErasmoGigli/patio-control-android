@@ -9,6 +9,12 @@ import java.time.LocalTime
 /**
  * Estes testes são o contrato com a planilha. Se um deles quebrar, a culpa
  * não é do teste: alguém mudou uma coluna e a colagem vai desalinhar.
+ *
+ * As asserções separam a linha com [separar], e não com um split simples,
+ * porque um campo que contém ponto e vírgula sai entre aspas — separar sem
+ * respeitar isso partiria o campo ao meio e acusaria uma coluna a mais que
+ * não existe. O cenário de teste inclui uma observação com ponto e vírgula
+ * exatamente para manter essa regra sob verificação.
  */
 class CsvExportadorTest {
 
@@ -40,49 +46,88 @@ class CsvExportadorTest {
         )
     )
 
+    /** Separador de CSV que respeita aspas e aspa dobrada, como o Excel. */
+    private fun separar(linha: String): List<String> {
+        val campos = mutableListOf<String>()
+        val atual = StringBuilder()
+        var dentroDeAspas = false
+        var i = 0
+        while (i < linha.length) {
+            val c = linha[i]
+            when {
+                dentroDeAspas && c == '"' && i + 1 < linha.length && linha[i + 1] == '"' -> {
+                    atual.append('"')
+                    i++
+                }
+
+                c == '"' -> dentroDeAspas = !dentroDeAspas
+                c == ';' && !dentroDeAspas -> {
+                    campos += atual.toString()
+                    atual.setLength(0)
+                }
+
+                else -> atual.append(c)
+            }
+            i++
+        }
+        campos += atual.toString()
+        return campos
+    }
+
+    private fun registros() = separar(CsvExportador.registros(listOf(carreta)))
+    private fun ativos() = separar(CsvExportador.ativos(listOf(carreta)))
+    private fun avarias() = separar(CsvExportador.avarias(listOf(carreta)))
+
     @Test
     fun `registros tem exatamente 29 colunas`() {
-        val colunas = CsvExportador.registros(listOf(carreta)).split(';')
-        assertEquals(CsvExportador.COLUNAS_REGISTROS, colunas.size)
+        assertEquals(CsvExportador.COLUNAS_REGISTROS, registros().size)
     }
 
     @Test
     fun `ativos e avarias tem 7 colunas`() {
-        assertEquals(CsvExportador.COLUNAS_ATIVOS, CsvExportador.ativos(listOf(carreta)).split(';').size)
-        assertEquals(CsvExportador.COLUNAS_AVARIAS, CsvExportador.avarias(listOf(carreta)).split(';').size)
+        assertEquals(CsvExportador.COLUNAS_ATIVOS, ativos().size)
+        assertEquals(CsvExportador.COLUNAS_AVARIAS, avarias().size)
     }
 
     @Test
     fun `data sai em dd-MM-aaaa e hora em HH-mm`() {
-        val colunas = CsvExportador.registros(listOf(carreta)).split(';')
-        assertEquals("01/01/2026", colunas[1])
-        assertEquals("07:05", colunas[18])
-        assertEquals("11:40", colunas[25])
+        val c = registros()
+        assertEquals("01/01/2026", c[1])
+        assertEquals("07:05", c[18])
+        assertEquals("11:40", c[25])
     }
 
     @Test
     fun `decimal sai com virgula e inteiro sem casa`() {
-        val colunas = CsvExportador.registros(listOf(carreta)).split(';')
-        assertEquals("12,5", colunas[14])
-        assertEquals("30", CsvExportador.ativos(listOf(carreta)).split(';')[2])
+        assertEquals("12,5", registros()[14])
+        assertEquals("30", ativos()[2])
     }
 
     @Test
     fun `horario nao marcado sai vazio, nao sai zero`() {
-        val colunas = CsvExportador.registros(listOf(carreta)).split(';')
-        assertEquals("", colunas[17]) // programado
-        assertEquals("", colunas[19]) // entrada
+        val c = registros()
+        assertEquals("", c[17]) // programado
+        assertEquals("", c[19]) // entrada
     }
 
     @Test
     fun `avaria sem quantidade deixa a coluna vazia`() {
-        assertEquals("", CsvExportador.avarias(listOf(carreta)).split(';')[2])
+        assertEquals("", avarias()[2])
     }
 
     @Test
     fun `campo com ponto e virgula sai entre aspas`() {
-        val linha = CsvExportador.avarias(listOf(carreta))
-        assertTrue(linha.contains("\"Palete tombado; sem contagem\""))
+        assertTrue(
+            CsvExportador.avarias(listOf(carreta))
+                .contains("\"Palete tombado; sem contagem\"")
+        )
+    }
+
+    @Test
+    fun `campo entre aspas volta inteiro na leitura`() {
+        // Prova de que o quoting não perde conteúdo: o ponto e vírgula
+        // continua dentro do mesmo campo depois de separar.
+        assertEquals("Palete tombado; sem contagem", avarias()[5])
     }
 
     @Test
@@ -92,14 +137,13 @@ class CsvExportadorTest {
 
     @Test
     fun `a coluna de foto leva o nome do arquivo, nunca a imagem`() {
-        val foto = CsvExportador.avarias(listOf(carreta)).split(';')[6]
-        assertEquals("AVARIA_YYTN-20260101-001_1_abc.jpg", foto)
+        assertEquals("AVARIA_YYTN-20260101-001_1_abc.jpg", avarias()[6])
     }
 
     @Test
     fun `resposta de AG sai como Sim, Nao ou vazio`() {
         fun coluna(r: RespostaAg) =
-            CsvExportador.registros(listOf(carreta.copy(respostaAg = r))).split(';')[26]
+            separar(CsvExportador.registros(listOf(carreta.copy(respostaAg = r))))[26]
 
         assertEquals("Sim", coluna(RespostaAg.SIM))
         assertEquals("Não", coluna(RespostaAg.NAO))
@@ -108,7 +152,9 @@ class CsvExportadorTest {
 
     @Test
     fun `varias carretas saem em linhas separadas por CRLF`() {
-        val texto = CsvExportador.registros(listOf(carreta, carreta.copy(id = "YYTN-20260101-002")))
+        val texto = CsvExportador.registros(
+            listOf(carreta, carreta.copy(id = "YYTN-20260101-002"))
+        )
         assertEquals(2, texto.split(CsvExportador.QUEBRA).size)
     }
 }

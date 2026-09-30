@@ -36,7 +36,7 @@ abstract class PatioDatabase : RoomDatabase() {
                 // Sem fallbackToDestructiveMigration de propósito: apagar o
                 // banco do conferente numa atualização é perder turno de
                 // coleta. Toda mudança de schema entra como migração escrita.
-                .addCallback(object : RoomDatabase.Callback {
+                .addCallback(object : RoomDatabase.Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)
                         db.execSQL("PRAGMA foreign_keys = ON")
