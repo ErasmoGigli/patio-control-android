@@ -2,6 +2,7 @@ package com.patiocontrol.ui.passagem
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
@@ -34,6 +38,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.patiocontrol.data.repository.Entrega
 import com.patiocontrol.data.repository.PatioRepository
 import com.patiocontrol.domain.Passagem
 import com.patiocontrol.ui.componentes.Aviso
@@ -42,6 +47,7 @@ import com.patiocontrol.ui.componentes.Cartao
 import com.patiocontrol.ui.componentes.RotuloBloco
 import com.patiocontrol.ui.repositorio
 import com.patiocontrol.util.Compartilhar
+import com.patiocontrol.util.Gravar
 import com.patiocontrol.util.Qr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,8 +72,12 @@ class PassagemViewModel(private val repositorio: PatioRepository) : ViewModel() 
         val abertas: Int = 0,
         val gerando: Boolean = false,
         val recebidas: Int? = null,
+        val entregues: Int? = null,
         val erro: String? = null
     )
+
+    /** Bilhete montado esperando destino, igual ao pacote da exportação. */
+    private var pendente: Entrega? = null
 
     private val _estado = MutableStateFlow(Estado())
     val estado: StateFlow<Estado> = _estado.asStateFlow()
@@ -82,7 +92,7 @@ class PassagemViewModel(private val repositorio: PatioRepository) : ViewModel() 
 
     fun gerarQr() = viewModelScope.launch {
         _estado.update { it.copy(gerando = true, erro = null) }
-        val texto = repositorio.textoDePassagem()
+        val texto = repositorio.prepararPassagem().texto
         val imagens = withContext(Dispatchers.Default) {
             runCatching { Qr.fatiar(texto).map { Qr.bitmap(it) } }.getOrNull()
         }
@@ -92,20 +102,85 @@ class PassagemViewModel(private val repositorio: PatioRepository) : ViewModel() 
         }
     }
 
-    fun exportarArquivo(contexto: Context) = viewModelScope.launch {
-        val texto = repositorio.textoDePassagem()
+    /**
+     * Entrega por compartilhamento. As carretas só são marcadas como
+     * transferidas depois que a folha abriu: marcar antes e falhar aqui
+     * deixaria o registro fora da fila de exportação sem ter saído do
+     * aparelho.
+     */
+    fun entregarCompartilhando(contexto: Context) = viewModelScope.launch {
+        val entrega = montar(contexto) ?: return@launch
+        val arquivo = entrega.second
+
+        if (!Compartilhar.arquivo(contexto, arquivo, "text/plain", "Passagem de turno")) {
+            _estado.update {
+                it.copy(
+                    erro = "Nenhum app deste aparelho aceitou o arquivo. Use SALVAR NO " +
+                        "APARELHO. As carretas continuam aqui."
+                )
+            }
+            return@launch
+        }
+        concluir(entrega.first)
+    }
+
+    /** Entrega gravando num lugar escolhido, sem depender de outro app. */
+    fun entregarSalvando(contexto: Context, abrirSeletor: (String) -> Unit) =
+        viewModelScope.launch {
+            val entrega = montar(contexto) ?: return@launch
+            pendente = entrega.first
+            abrirSeletor(entrega.second.name)
+        }
+
+    /** Resposta do seletor de arquivos; [destino] nulo é cancelamento. */
+    fun gravarEm(contexto: Context, destino: Uri?) = viewModelScope.launch {
+        val bilhete = pendente
+        pendente = null
+
+        if (bilhete == null) {
+            _estado.update { it.copy(erro = "O bilhete se perdeu no caminho. Gere de novo.") }
+            return@launch
+        }
+        if (destino == null) {
+            _estado.update {
+                it.copy(erro = "Gravação cancelada. As carretas continuam neste aparelho.")
+            }
+            return@launch
+        }
+
+        val origem = File(File(contexto.cacheDir, "pacotes"), ARQUIVO)
+        val gravou = withContext(Dispatchers.IO) { Gravar.copiarPara(contexto, origem, destino) }
+        if (!gravou) {
+            _estado.update { it.copy(erro = "Não foi possível gravar na pasta escolhida.") }
+            return@launch
+        }
+        concluir(bilhete)
+    }
+
+    private suspend fun concluir(bilhete: Entrega) {
+        repositorio.marcarTransferidas(bilhete.ids)
+        _estado.update { it.copy(entregues = bilhete.ids.size, erro = null) }
+    }
+
+    /** Monta o bilhete e grava o arquivo temporário; nulo se não der. */
+    private suspend fun montar(contexto: Context): Pair<Entrega, File>? {
+        val bilhete = repositorio.prepararPassagem()
+        if (bilhete.ids.isEmpty()) {
+            _estado.update { it.copy(erro = "Nenhuma carreta aberta para passar.") }
+            return null
+        }
         val arquivo = withContext(Dispatchers.IO) {
             runCatching {
                 File(contexto.cacheDir, "pacotes").apply { if (!exists()) mkdirs() }
-                    .let { File(it, "passagem-turno.txt") }
-                    .apply { writeText(texto) }
+                    .let { File(it, ARQUIVO) }
+                    .apply { writeText(bilhete.texto) }
             }.getOrNull()
         }
         if (arquivo == null) {
             _estado.update { it.copy(erro = "Não foi possível gravar o arquivo") }
-            return@launch
+            return null
         }
-        Compartilhar.arquivo(contexto, arquivo, "text/plain", "Passagem de turno")
+        return bilhete to arquivo
     }
 
     fun receberTexto(texto: String) = viewModelScope.launch {
@@ -131,7 +206,11 @@ class PassagemViewModel(private val repositorio: PatioRepository) : ViewModel() 
         receberTexto(texto)
     }
 
-    fun limpar() = _estado.update { it.copy(erro = null, recebidas = null) }
+    fun limpar() = _estado.update { it.copy(erro = null, recebidas = null, entregues = null) }
+
+    private companion object {
+        const val ARQUIVO = "passagem-turno.txt"
+    }
 }
 
 @Composable
@@ -143,10 +222,16 @@ fun PassagemScreen(
 ) {
     val estado by vm.estado.collectAsStateWithLifecycle()
     val contexto = LocalContext.current
+    var lendoQr by remember { mutableStateOf(false) }
 
     val escolherArquivo = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { vm.receberDeArquivo(contexto, it) } }
+
+    // Seletor do sistema para gravar o bilhete sem depender de outro app.
+    val ondeSalvar = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { destino -> vm.gravarEm(contexto, destino) }
 
     Scaffold(
         topBar = { BarraTopo("PASSAGEM DE TURNO", "${estado.abertas} carreta(s) aberta(s)", aoVoltar) }
@@ -162,7 +247,9 @@ fun PassagemScreen(
             Cartao {
                 Text(
                     "As carretas ainda abertas passam para o aparelho do próximo turno. " +
-                        "As encerradas ficam aqui e saem na exportação normal.",
+                        "As encerradas ficam aqui e saem na exportação normal. " +
+                        "Depois de entregues, elas deixam de sair na exportação deste " +
+                        "aparelho — quem exporta passa a ser o outro.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -181,9 +268,18 @@ fun PassagemScreen(
 
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
-                onClick = { vm.exportarArquivo(contexto) },
+                onClick = { vm.entregarCompartilhando(contexto) },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Enviar por arquivo") }
+
+            // Segunda saída, pelo mesmo motivo da exportação: compartilhar
+            // depende de haver outro app disposto a receber, e no aparelho
+            // corporativo isso pode estar restringido.
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { vm.entregarSalvando(contexto) { nome -> ondeSalvar.launch(nome) } },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Salvar no aparelho") }
 
             if (estado.partes.isNotEmpty()) {
                 RotuloBloco(
@@ -215,6 +311,14 @@ fun PassagemScreen(
             }
 
             RotuloBloco("Receber o turno")
+            Button(
+                onClick = { lendoQr = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) { Text("LER QR CODE", fontWeight = FontWeight.Bold) }
+
+            Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = { escolherArquivo.launch("*/*") },
                 modifier = Modifier.fillMaxWidth()
@@ -222,9 +326,17 @@ fun PassagemScreen(
 
             Spacer(Modifier.height(8.dp))
             Aviso(
-                "A leitura do QR pela câmera entra na próxima versão. Até lá, o caminho " +
-                    "por arquivo faz a mesma transferência — inclusive por Bluetooth, sem rede."
+                "Os dois caminhos entregam a mesma coisa. O QR serve com os dois aparelhos " +
+                    "lado a lado; o arquivo serve quando estão longe — inclusive por " +
+                    "Bluetooth, sem rede."
             )
+
+            estado.entregues?.let { n ->
+                Spacer(Modifier.height(12.dp))
+                Aviso("$n carreta(s) entregue(s). Elas não saem mais na exportação daqui.")
+                Spacer(Modifier.height(4.dp))
+                Button(onClick = { vm.limpar() }) { Text("ok") }
+            }
 
             estado.recebidas?.let { n ->
                 Spacer(Modifier.height(12.dp))
@@ -245,5 +357,15 @@ fun PassagemScreen(
 
             Spacer(Modifier.height(28.dp))
         }
+    }
+
+    if (lendoQr) {
+        LeitorQr(
+            aoFechar = { lendoQr = false },
+            aoCompletar = { texto ->
+                lendoQr = false
+                vm.receberTexto(texto)
+            }
+        )
     }
 }

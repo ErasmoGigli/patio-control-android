@@ -225,6 +225,16 @@ private fun CartaoCarreta(linha: LinhaCarreta, aoTocar: () -> Unit) {
                 Selo("a exportar", MaterialTheme.colorScheme.secondary)
             }
         }
+        // Em linha própria: com a situação longa, mais um selo na linha de
+        // cima sairia da tela num aparelho estreito.
+        if (linha.estourosDeMeta > 0) {
+            Spacer(Modifier.height(6.dp))
+            Selo(
+                if (linha.estourosDeMeta == 1) "1 meta estourada"
+                else "${linha.estourosDeMeta} metas estouradas",
+                MaterialTheme.colorScheme.error
+            )
+        }
     }
 }
 
@@ -232,5 +242,7 @@ private fun CartaoCarreta(linha: LinhaCarreta, aoTocar: () -> Unit) {
 data class LinhaCarreta(
     val carreta: Carreta,
     val indicadores: Indicadores,
-    val situacao: Situacao
+    val situacao: Situacao,
+    /** Quantas metas de tempo esta carreta já passou; 0 quando não há meta. */
+    val estourosDeMeta: Int = 0
 )

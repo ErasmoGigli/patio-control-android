@@ -110,6 +110,16 @@ class CarretaDaoTest {
     }
 
     @Test
+    fun carreta_transferida_nao_entra_na_fila_de_exportacao() = runTest {
+        // Sem isto a planilha recebe a mesma linha duas vezes: uma do
+        // aparelho que entregou o turno e outra do que recebeu.
+        banco.carretaDao().salvar(carreta(id = "A", encerrada = Instant.now()))
+        banco.carretaDao().marcarTransferidas(listOf("A"), Instant.now())
+
+        assertTrue(banco.carretaDao().paraExportar().isEmpty())
+    }
+
+    @Test
     fun marcar_exportadas_tira_da_fila() = runTest {
         banco.carretaDao().salvar(carreta(id = "A", encerrada = Instant.now()))
         banco.carretaDao().marcarExportadas(listOf("A"), Instant.now())

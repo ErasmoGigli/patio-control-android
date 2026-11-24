@@ -129,6 +129,12 @@ object NomesPacote {
 /** O bilhete que viaja dentro do pacote, para quem abrir sem contexto. */
 object LeiaMe {
 
+    /**
+     * @param arquivos os CSV que realmente entraram no pacote, na ordem em
+     *   que devem ser lancados. Listar um arquivo que nao esta ali faz quem
+     *   abrir procurar o que nao existe e achar que se perdeu no caminho —
+     *   por isso a lista vem de fora, e nao de nomes fixos.
+     */
     fun texto(
         carimbo: String,
         aparelho: String,
@@ -136,28 +142,45 @@ object LeiaMe {
         data: LocalDate,
         hora: LocalTime,
         carretas: List<Carreta>,
-        fotos: Int
+        fotos: Int,
+        arquivos: List<String>
     ): String {
         val linhasAg = carretas.sumOf { it.ativosGiro.size }
         val itensAvaria = carretas.sumOf { it.avarias.size }
-        return listOf(
-            "CONTROLE DE PATIO - exportacao ${Tempo.dataBr(data)} ${Tempo.hora(hora)}",
-            "Aparelho: $aparelho   Turno: $turno",
-            "",
-            "Carretas: ${carretas.size}   Linhas de ativo de giro: $linhasAg   " +
-                "Itens de avaria: $itensAvaria   Fotos: $fotos",
-            "",
-            "COMO LANCAR NA PLANILHA",
-            "1. ${NomesPacote.registros(carimbo)}  ->  aba REGISTROS, primeira linha vazia da coluna A",
-            "2. ${NomesPacote.ativos(carimbo)}     ->  aba AG_DETALHE, primeira linha vazia da coluna A",
-            "3. ${NomesPacote.avarias(carimbo)}    ->  aba AVARIAS, primeira linha vazia da coluna A",
-            "",
-            "Os arquivos usam ponto e virgula como separador e UTF-8 com BOM.",
-            "Ao abrir no Excel, use Dados > De Texto/CSV se as colunas nao separarem sozinhas.",
-            "",
-            "A coluna Foto do arquivo de avarias traz o nome do arquivo que esta",
-            "na pasta fotos/ deste pacote. Guarde o pacote inteiro para manter o vinculo.",
-            ""
-        ).joinToString("\r\n")
+
+        val comoLancar = arquivos.mapIndexed { indice, nome ->
+            "${indice + 1}. ${nome.padEnd(32)}->  aba ${abaDe(nome, carimbo)}, " +
+                "primeira linha vazia da coluna A"
+        }
+
+        val sobreFoto =
+            if (fotos > 0) listOf(
+                "",
+                "A coluna Foto do arquivo de avarias traz o nome do arquivo que esta",
+                "na pasta fotos/ deste pacote. Guarde o pacote inteiro para manter o vinculo."
+            ) else emptyList()
+
+        return (
+            listOf(
+                "CONTROLE DE PATIO - exportacao ${Tempo.dataBr(data)} ${Tempo.hora(hora)}",
+                "Aparelho: $aparelho   Turno: $turno",
+                "",
+                "Carretas: ${carretas.size}   Linhas de ativo de giro: $linhasAg   " +
+                    "Itens de avaria: $itensAvaria   Fotos: $fotos",
+                "",
+                "COMO LANCAR NA PLANILHA"
+            ) + comoLancar + listOf(
+                "",
+                "Os arquivos usam ponto e virgula como separador e UTF-8 com BOM.",
+                "Ao abrir no Excel, use Dados > De Texto/CSV se as colunas nao separarem sozinhas."
+            ) + sobreFoto + listOf("")
+            ).joinToString("\r\n")
+    }
+
+    private fun abaDe(nome: String, carimbo: String): String = when (nome) {
+        NomesPacote.registros(carimbo) -> "REGISTROS"
+        NomesPacote.ativos(carimbo) -> "AG_DETALHE"
+        NomesPacote.avarias(carimbo) -> "AVARIAS"
+        else -> "?"
     }
 }

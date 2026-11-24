@@ -6,7 +6,9 @@ import com.patiocontrol.data.repository.PatioRepository
 import com.patiocontrol.domain.CalculadoraIndicadores
 import com.patiocontrol.domain.Carreta
 import com.patiocontrol.domain.ClassificadorSituacao
+import com.patiocontrol.domain.ComparadorMetas
 import com.patiocontrol.domain.Configuracao
+import com.patiocontrol.domain.Metas
 import com.patiocontrol.domain.Situacao
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -50,19 +52,23 @@ class PatioViewModel(private val repositorio: PatioRepository) : ViewModel() {
         relogio
     ) { abertas, encerradas, aExportar, config, agora ->
         Estado(
-            carretas = abertas.map { linha(it, agora) },
-            encerradas = encerradas.map { linha(it, agora) },
+            carretas = abertas.map { linha(it, agora, config.metas) },
+            encerradas = encerradas.map { linha(it, agora, config.metas) },
             configuracao = config,
             aExportar = aExportar.size,
             carregando = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Estado())
 
-    private fun linha(carreta: Carreta, agora: LocalTime) = LinhaCarreta(
-        carreta = carreta,
-        indicadores = CalculadoraIndicadores.calcular(carreta, agora),
-        situacao = ClassificadorSituacao.classificar(carreta)
-    )
+    private fun linha(carreta: Carreta, agora: LocalTime, metas: Metas): LinhaCarreta {
+        val indicadores = CalculadoraIndicadores.calcular(carreta, agora)
+        return LinhaCarreta(
+            carreta = carreta,
+            indicadores = indicadores,
+            situacao = ClassificadorSituacao.classificar(carreta),
+            estourosDeMeta = ComparadorMetas.estouros(indicadores, metas).size
+        )
+    }
 
     /** Abre a carreta já com a chegada marcada e devolve o id gerado. */
     fun abrir(base: Carreta, aoAbrir: (String) -> Unit) = viewModelScope.launch {

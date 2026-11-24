@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.patiocontrol.core.Texto
 import com.patiocontrol.domain.AtivoGiro
+import com.patiocontrol.domain.Carreta
 import com.patiocontrol.domain.RespostaAg
 import com.patiocontrol.ui.carreta.CarretaViewModel
 import com.patiocontrol.ui.componentes.Aviso
@@ -90,6 +91,13 @@ fun AgListaScreen(
                 ) { Text("NÃO") }
             }
 
+            // A lista aparece sempre que houver linha, qualquer que seja a
+            // resposta. Uma carreta que chega pela troca de turno já vem com
+            // AG lançado e com a pergunta em branco: esconder a lista fazia o
+            // conferente do turno seguinte trabalhar às cegas, e a exportação
+            // mandava para a planilha um AG que o app nunca mostrou.
+            val temLinhas = carreta.ativosGiro.isNotEmpty()
+
             when (carreta.respostaAg) {
                 RespostaAg.NAO -> {
                     RotuloBloco("Justificativa obrigatória")
@@ -104,37 +112,27 @@ fun AgListaScreen(
                     )
                     Spacer(Modifier.height(10.dp))
                     Aviso("Sem AG é informação de gestão, não é erro. O que não pode é sair sem explicação — é isso que o painel cruza por transportadora e por origem.")
+                    if (temLinhas) {
+                        Spacer(Modifier.height(10.dp))
+                        Aviso(
+                            "Atenção: a resposta é NÃO, mas esta carreta tem " +
+                                "${carreta.ativosGiro.size} linha(s) de AG lançada(s), e elas " +
+                                "vão para a planilha assim mesmo. Apague as linhas abaixo ou " +
+                                "mude a resposta para SIM.",
+                            erro = true
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RotuloBloco("Tipos lançados")
+                        ListaDeAg(carreta, aoAbrirItem)
+                    }
                 }
 
                 RespostaAg.SIM -> {
                     RotuloBloco("Tipos carregados")
-                    if (carreta.ativosGiro.isEmpty()) {
+                    if (!temLinhas) {
                         EspacoVazio("Nenhum tipo lançado ainda.")
                     } else {
-                        Cartao {
-                            carreta.ativosGiro.forEach { ag ->
-                                ItemLinha(
-                                    titulo = ag.tipo.ifBlank { "sem tipo" },
-                                    valor = "${Texto.numeroBr(ag.quantidade)} ${ag.unidade}".trim(),
-                                    aoTocar = { aoAbrirItem(ag.id) }
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Cartao {
-                            RotuloBloco("Totais por unidade")
-                            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                                carreta.ativosGiro
-                                    .filter { it.quantidade != null }
-                                    .groupBy { it.unidade }
-                                    .forEach { (unidade, linhas) ->
-                                        Metrica(
-                                            Texto.numeroBr(linhas.sumOf { it.quantidade ?: 0.0 }),
-                                            unidade.lowercase().ifBlank { "sem unidade" }
-                                        )
-                                    }
-                            }
-                        }
+                        ListaDeAg(carreta, aoAbrirItem)
                     }
                     Spacer(Modifier.height(10.dp))
                     OutlinedButton(
@@ -145,7 +143,18 @@ fun AgListaScreen(
 
                 RespostaAg.NAO_RESPONDIDO -> {
                     Spacer(Modifier.height(14.dp))
-                    Aviso("Responda acima para liberar o lançamento.")
+                    if (temLinhas) {
+                        Aviso(
+                            "Esta carreta chegou com ${carreta.ativosGiro.size} linha(s) de AG " +
+                                "já lançada(s) — provavelmente da passagem de turno. Confira " +
+                                "abaixo e responda acima para liberar o lançamento."
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        RotuloBloco("Tipos já lançados")
+                        ListaDeAg(carreta, aoAbrirItem)
+                    } else {
+                        Aviso("Responda acima para liberar o lançamento.")
+                    }
                 }
             }
 
@@ -158,6 +167,40 @@ fun AgListaScreen(
             ) { Text("Salvar observação") }
 
             Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+
+/**
+ * As linhas de AG da carreta e o total por unidade.
+ *
+ * Fica fora do `when` de propósito: a lista é a mesma nos três estados da
+ * pergunta, e o que muda é só o aviso que vem antes dela.
+ */
+@Composable
+private fun ListaDeAg(carreta: Carreta, aoAbrirItem: (Long) -> Unit) {
+    Cartao {
+        carreta.ativosGiro.forEach { ag ->
+            ItemLinha(
+                titulo = ag.tipo.ifBlank { "sem tipo" },
+                valor = "${Texto.numeroBr(ag.quantidade)} ${ag.unidade}".trim(),
+                aoTocar = { aoAbrirItem(ag.id) }
+            )
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    Cartao {
+        RotuloBloco("Totais por unidade")
+        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            carreta.ativosGiro
+                .filter { it.quantidade != null }
+                .groupBy { it.unidade }
+                .forEach { (unidade, linhas) ->
+                    Metrica(
+                        Texto.numeroBr(linhas.sumOf { it.quantidade ?: 0.0 }),
+                        unidade.lowercase().ifBlank { "sem unidade" }
+                    )
+                }
         }
     }
 }

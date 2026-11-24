@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
@@ -19,10 +20,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +65,7 @@ fun CarretaScreen(
     val estado by vm.estado.collectAsStateWithLifecycle()
     val mensagem by vm.mensagem.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    var confirmandoReabertura by remember { mutableStateOf(false) }
 
     LaunchedEffect(mensagem) {
         mensagem?.let {
@@ -200,15 +205,56 @@ fun CarretaScreen(
             }
 
             Spacer(Modifier.height(18.dp))
-            Button(
-                onClick = aoEncerrar,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text("ENCERRAR CARRETA", fontWeight = FontWeight.Bold)
+
+            // Carreta encerrada nao tem o que encerrar de novo. O que ela
+            // precisa e de um caminho de volta: sem isso, um erro de
+            // digitacao percebido depois do encerramento nao tem conserto
+            // dentro do app.
+            if (carreta?.encerrada == true) {
+                OutlinedButton(
+                    onClick = { confirmandoReabertura = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("REABRIR CARRETA")
+                }
+            } else {
+                Button(
+                    onClick = aoEncerrar,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text("ENCERRAR CARRETA", fontWeight = FontWeight.Bold)
+                }
             }
             Spacer(Modifier.height(28.dp))
         }
+    }
+
+    if (confirmandoReabertura) {
+        AlertDialog(
+            onDismissRequest = { confirmandoReabertura = false },
+            title = { Text("Reabrir esta carreta?") },
+            text = {
+                Text(
+                    "Ela volta para o pátio e entra de novo na fila de exportação. " +
+                        "Se este registro já foi colado na planilha, colar o próximo " +
+                        "pacote vai criar uma linha repetida — apague a linha antiga lá.\n\n" +
+                        "Se esta carreta tinha sido entregue na passagem de turno, " +
+                        "reabrir também desfaz a entrega e ela volta a ser deste aparelho."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    vm.reabrir()
+                    confirmandoReabertura = false
+                }) { Text("Reabrir") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmandoReabertura = false }) { Text("Cancelar") }
+            }
+        )
     }
 }

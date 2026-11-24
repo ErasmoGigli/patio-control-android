@@ -89,9 +89,19 @@ class PatioRepository(
         carretaDao.salvar(carreta.copy(encerradaEm = Instant.now()).paraEntidade())
     }
 
+    /**
+     * Devolve a carreta ao fluxo normal deste aparelho.
+     *
+     * Limpa também a marca de transferida: se a passagem de turno não chegou
+     * do outro lado, este é o caminho de volta — sem isso o registro ficaria
+     * fora da fila de exportação para sempre.
+     */
     suspend fun reabrir(id: String) {
         val carreta = buscar(id) ?: return
-        carretaDao.salvar(carreta.copy(encerradaEm = null, exportadaEm = null).paraEntidade())
+        carretaDao.salvar(
+            carreta.copy(encerradaEm = null, exportadaEm = null, transferidaEm = null)
+                .paraEntidade()
+        )
     }
 
     suspend fun apagar(id: String) {
@@ -137,10 +147,21 @@ class PatioRepository(
 
     // -------------------------------------------------- passagem de turno
 
-    /** Texto da passagem de turno com as carretas ainda abertas. */
-    suspend fun textoDePassagem(): String {
+    /**
+     * Monta o bilhete da passagem de turno e devolve junto os identificadores
+     * que ele carrega.
+     *
+     * Os ids voltam de propósito: quem entrega precisa marcar exatamente
+     * essas carretas como transferidas depois que a entrega se confirmar —
+     * nem antes, nem um conjunto diferente do que saiu.
+     */
+    suspend fun prepararPassagem(): Entrega {
         val config = configuracao.first()
-        return Passagem.codificar(config.aparelho, config.turno, abertasAgora())
+        val abertas = abertasAgora()
+        return Entrega(
+            texto = Passagem.codificar(config.aparelho, config.turno, abertas),
+            ids = abertas.map { it.id }
+        )
     }
 
     suspend fun abertasAgora(): List<Carreta> = abertas().first()
@@ -174,3 +195,6 @@ class PatioRepository(
 
 /** O relógio do pátio tem precisão de minuto; segundo só polui o dado. */
 fun LocalTime.semSegundos(): LocalTime = withSecond(0).withNano(0)
+
+/** Bilhete de passagem pronto para entregar, com o que ele carrega dentro. */
+data class Entrega(val texto: String, val ids: List<String>)

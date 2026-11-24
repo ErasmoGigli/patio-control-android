@@ -5,9 +5,15 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Leitura do QR da passagem de turno. Declarar esta permissão também
+         passa a exigi-la na foto de avaria: o Android obriga o app que pede
+         CAMERA a tê-la concedida antes de chamar a câmera do sistema. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:name=".PatioApplication"
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

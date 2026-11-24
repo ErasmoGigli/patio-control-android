@@ -1,10 +1,15 @@
 package com.patiocontrol.ui.avaria
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,8 +38,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.patiocontrol.core.Texto
 import com.patiocontrol.domain.Avaria
@@ -47,6 +56,9 @@ import com.patiocontrol.ui.componentes.EspacoVazio
 import com.patiocontrol.ui.componentes.ItemLinha
 import com.patiocontrol.ui.componentes.RotuloBloco
 import com.patiocontrol.ui.componentes.Selo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Avarias da carga.
@@ -156,10 +168,34 @@ fun AvariaItemScreen(
         fotoPendente = ""
     }
 
-    val miniatura = remember(foto) {
-        if (foto.isNotBlank() && fotos.existe(foto)) {
-            runCatching { BitmapFactory.decodeFile(fotos.arquivo(foto).absolutePath) }.getOrNull()
-        } else null
+    // Reservar o nome e chamar a câmera do sistema; só depois da permissão.
+    fun abrirCamera() {
+        val nome = vm.nomeDeFotoNova()
+        fotoPendente = nome
+        camera.launch(fotos.uriPara(nome))
+    }
+
+    // O app passou a declarar CAMERA por causa do leitor de QR, e o Android
+    // então exige que ela esteja concedida até para chamar a câmera do
+    // sistema — o que antes, sem a permissão declarada, não era preciso.
+    var cameraNegada by remember { mutableStateOf(false) }
+    val contexto = LocalContext.current
+    val pedirCamera = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { concedida ->
+        cameraNegada = !concedida
+        if (concedida) abrirCamera()
+    }
+
+    // Lado da miniatura em pixels reais deste aparelho, para pedir ao
+    // decodificador só o que cabe nela.
+    val ladoMiniatura = with(LocalDensity.current) { LADO_MINIATURA.roundToPx() }
+
+    val miniatura by produceState(Miniatura(), foto, ladoMiniatura) {
+        value = withContext(Dispatchers.IO) {
+            if (foto.isBlank() || !fotos.existe(foto)) Miniatura(pronta = true)
+            else Miniatura(miniaturaDe(fotos.arquivo(foto), ladoMiniatura), pronta = true)
+        }
     }
 
     Scaffold(
@@ -197,16 +233,28 @@ fun AvariaItemScreen(
 
             RotuloBloco("Foto")
             Cartao {
-                if (miniatura != null) {
+                // Enquanto o disco não responde, a foto conta como anexada:
+                // o nome dela já está na avaria. Só quando a leitura termina
+                // sem imagem é que a tela volta a oferecer tirar outra.
+                if (foto.isNotBlank() && (!miniatura.pronta || miniatura.bitmap != null)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            bitmap = miniatura.asImageBitmap(),
-                            contentDescription = "Foto da avaria",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(9.dp))
-                        )
+                        val molde = Modifier
+                            .size(LADO_MINIATURA)
+                            .clip(RoundedCornerShape(9.dp))
+                        val bitmap = miniatura.bitmap
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "Foto da avaria",
+                                contentScale = ContentScale.Crop,
+                                modifier = molde
+                            )
+                        } else {
+                            // A foto já está anexada; só os pixels ainda não
+                            // chegaram do disco. Mostrar o espaço dela evita
+                            // piscar o botão de tirar foto por um instante.
+                            Box(molde.background(MaterialTheme.colorScheme.surfaceVariant))
+                        }
                         Spacer(Modifier.size(12.dp))
                         Column(Modifier.weight(1f)) {
                             Selo("foto anexada", MaterialTheme.colorScheme.tertiary)
@@ -224,12 +272,22 @@ fun AvariaItemScreen(
                 } else {
                     OutlinedButton(
                         onClick = {
-                            val nome = vm.nomeDeFotoNova()
-                            fotoPendente = nome
-                            camera.launch(fotos.uriPara(nome))
+                            val concedida = ContextCompat.checkSelfPermission(
+                                contexto, Manifest.permission.CAMERA
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (concedida) abrirCamera()
+                            else pedirCamera.launch(Manifest.permission.CAMERA)
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("TIRAR FOTO DA AVARIA") }
+                }
+                if (cameraNegada) {
+                    Spacer(Modifier.height(8.dp))
+                    Aviso(
+                        "Sem a permissão de câmera não dá para fotografar a avaria. " +
+                            "O registro pode ser salvo sem foto.",
+                        erro = true
+                    )
                 }
             }
             Text(
@@ -276,4 +334,48 @@ fun AvariaItemScreen(
             Spacer(Modifier.height(28.dp))
         }
     }
+}
+
+/** Lado do quadrado da foto na tela de avaria. */
+private val LADO_MINIATURA = 72.dp
+
+/**
+ * A miniatura e o aviso de que o disco já respondeu.
+ *
+ * Sem o [pronta], um bitmap nulo significaria duas coisas diferentes — "a
+ * leitura ainda não voltou" e "não há foto" — e a tela trocaria o quadrado
+ * pelo botão de tirar foto no meio do caminho.
+ */
+private data class Miniatura(val bitmap: Bitmap? = null, val pronta: Boolean = false)
+
+/**
+ * Lê a foto já reduzida ao tamanho em que ela vai aparecer.
+ *
+ * A câmera de um celular atual grava 12 megapixels ou mais. Decodificar
+ * isso inteiro custa perto de 50 MB de memória para desenhar um quadrado
+ * de 72 dp — e antes esse trabalho ainda acontecia durante a composição,
+ * na thread que desenha. Aparelho de pátio não tem essa folga.
+ *
+ * A primeira passada só mede o arquivo, sem alocar pixels. A segunda pede
+ * ao decodificador a maior redução por potência de dois que ainda cobre o
+ * lado alvo, que é o único fator que o Android aceita.
+ */
+private fun miniaturaDe(arquivo: File, ladoAlvo: Int): Bitmap? {
+    if (ladoAlvo <= 0) return null
+
+    val medida = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    runCatching { BitmapFactory.decodeFile(arquivo.absolutePath, medida) }
+    val maior = maxOf(medida.outWidth, medida.outHeight)
+    if (maior <= 0) return null
+
+    var amostra = 1
+    while (maior / (amostra * 2) >= ladoAlvo) amostra *= 2
+
+    val opcoes = BitmapFactory.Options().apply {
+        inSampleSize = amostra
+        // Miniatura opaca de 72 dp não precisa de canal alfa; metade da
+        // memória por pixel e nenhuma diferença visível nesse tamanho.
+        inPreferredConfig = Bitmap.Config.RGB_565
+    }
+    return runCatching { BitmapFactory.decodeFile(arquivo.absolutePath, opcoes) }.getOrNull()
 }

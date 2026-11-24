@@ -6,6 +6,7 @@ import com.patiocontrol.data.repository.PatioRepository
 import com.patiocontrol.domain.AtivoGiro
 import com.patiocontrol.domain.Avaria
 import com.patiocontrol.domain.CalculadoraIndicadores
+import com.patiocontrol.domain.ComparadorMetas
 import com.patiocontrol.domain.Carreta
 import com.patiocontrol.domain.ClassificadorSituacao
 import com.patiocontrol.domain.Configuracao
@@ -69,13 +70,17 @@ class CarretaViewModel(
         if (carreta == null) {
             Estado(configuracao = config, carregando = false)
         } else {
+            val indicadores = CalculadoraIndicadores.calcular(carreta, agora)
             Estado(
                 carreta = carreta,
                 configuracao = config,
-                indicadores = CalculadoraIndicadores.calcular(carreta, agora),
+                indicadores = indicadores,
                 situacao = ClassificadorSituacao.classificar(carreta),
                 pendencias = VerificadorPendencias.verificar(carreta),
-                alertas = VerificadorAlertas.verificar(carreta),
+                // Os avisos do registro vêm primeiro; a meta estourada é
+                // informação de gestão e entra depois, sem travar nada.
+                alertas = VerificadorAlertas.verificar(carreta) +
+                    ComparadorMetas.alertas(indicadores, config.metas),
                 carregando = false
             )
         }

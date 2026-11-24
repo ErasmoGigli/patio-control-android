@@ -142,6 +142,51 @@ object VerificadorPendencias {
 }
 
 /**
+ * Confronta o que a carreta levou contra a meta que a operação definiu.
+ *
+ * Meta em branco não compara nada. Isso é regra, não descuido: enquanto a
+ * operação não tem referência própria, número chutado só ensina o time a
+ * ignorar alerta. Por isso null aqui é silêncio, e nunca zero.
+ *
+ * O tempo produtivo anda ao contrário dos outros: ele é piso, não teto — o
+ * que incomoda é ficar abaixo dele.
+ */
+object ComparadorMetas {
+
+    data class Estouro(val rotulo: String, val minutos: Int, val meta: Int)
+
+    fun estouros(indicadores: Indicadores, metas: Metas): List<Estouro> = buildList {
+        fun conferir(rotulo: String, valor: Int?, meta: Int?) {
+            if (valor != null && meta != null && meta > 0 && valor > meta) {
+                add(Estouro(rotulo, valor, meta))
+            }
+        }
+        conferir("Espera para descarga", indicadores.esperaDescarga, metas.esperaDescarga)
+        conferir("Descarga", indicadores.descarga, metas.descarga)
+        conferir("Espera de AG", indicadores.esperaAg, metas.esperaAg)
+        conferir("Carregamento de AG", indicadores.carregamentoAg, metas.carregamentoAg)
+        conferir("Liberação", indicadores.liberacao, metas.liberacao)
+        conferir("Permanência", indicadores.permanencia, metas.permanencia)
+        conferir("Ciclo total", indicadores.ciclo, metas.ciclo)
+    }
+
+    /** As mesmas comparações já em frase, para a faixa de alerta da carreta. */
+    fun alertas(indicadores: Indicadores, metas: Metas): List<String> = buildList {
+        estouros(indicadores, metas).forEach { e ->
+            add("${e.rotulo}: ${Tempo.hm(e.minutos)}, acima da meta de ${Tempo.hm(e.meta)}")
+        }
+        val piso = metas.produtivo
+        val real = indicadores.produtivo
+        if (piso != null && real != null && real < piso) {
+            add(
+                "Tempo produtivo: ${Tempo.percentual(real)}, abaixo da meta de " +
+                    Tempo.percentual(piso)
+            )
+        }
+    }
+}
+
+/**
  * Avisos que não travam nada, mas que o conferente precisa ver antes de
  * encerrar — horário fora de sequência é o caso clássico, porque o número
  * fica plausível na tela e absurdo no indicador.

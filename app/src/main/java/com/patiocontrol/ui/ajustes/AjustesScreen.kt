@@ -140,6 +140,11 @@ fun AjustesScreen(
                 CampoMeta("Liberação", metas.liberacao) { metas = metas.copy(liberacao = it) }
                 CampoMeta("Permanência", metas.permanencia) { metas = metas.copy(permanencia = it) }
                 CampoMeta("Ciclo total", metas.ciclo) { metas = metas.copy(ciclo = it) }
+                // Este é o único que é piso, e não teto: a fração do tempo
+                // de pátio que foi descarga ou carregamento de fato.
+                CampoMeta("Tempo produtivo mínimo (%)", metas.produtivo?.let { (it * 100).toInt() }) { pct ->
+                    metas = metas.copy(produtivo = pct?.coerceIn(0, 100)?.let { it / 100.0 })
+                }
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(
                     onClick = { vm.salvar(config.copy(metas = metas)) },
@@ -148,7 +153,9 @@ fun AjustesScreen(
             }
             Text(
                 "Meta em branco não gera alerta. Deixe assim até a operação ter uma " +
-                    "referência própria — meta chutada só ensina o time a ignorar alerta.",
+                    "referência própria — meta chutada só ensina o time a ignorar alerta. " +
+                    "Com meta preenchida, a carreta que passar do tempo recebe o aviso na " +
+                    "tela dela e o selo na lista do pátio.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
